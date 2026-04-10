@@ -181,3 +181,82 @@ python cardiobound_complete.py
 ECG/PPG/IMU Sensors → MAX86176 → ADC → Jetson Nano → ML Inference → Mobile App
                                         ↑                                   │
                                         └──────── Closed-Loop Feedback ─────┘
+
+
+## Usage
+
+### 1. Data Preprocessing
+
+```python
+from data_preprocessing import ECGPreprocessor, DatasetManager
+
+# Initialize preprocessor
+preprocessor = ECGPreprocessor(sampling_rate=360)
+
+# Process signals
+processed_signal = preprocessor.preprocess_signal(raw_signal)
+features = preprocessor.extract_hrv_features(processed_signal)
+
+# Create train-val-test splits
+dataset_mgr = DatasetManager(output_dir='processed_data')
+splits = dataset_mgr.create_splits(X, y, test_size=0.15, val_size=0.15)
+```
+
+### 2. Train CNN-LSTM Classifier
+
+```python
+from signal_processing import CNNLSTM_Classifier
+
+# Initialize model
+model = CNNLSTM_Classifier(input_shape=(360, 1), n_classes=5)
+model.compile_model(learning_rate=1e-3)
+
+# Train
+history = model.train(X_train, y_train, X_val, y_val, epochs=50, batch_size=32)
+
+# Evaluate
+accuracy, f1_score = model.evaluate(X_test, y_test)
+```
+
+### 3. Train XGBoost Risk Stratification
+
+```python
+from risk_stratification import RiskStratificationModel
+
+# Initialize XGBoost
+risk_model = RiskStratificationModel()
+risk_model.compile_model()
+
+# Train
+history = risk_model.train(X_hrv_train, y_risk_train, X_hrv_val, y_risk_val)
+
+# Predict
+risk_predictions = risk_model.predict(X_hrv_test)
+```
+
+### 4. Hardware Deployment
+
+```python
+from hardware_export import TFLiteConverter
+
+# Convert to TensorFlow Lite
+converter = TFLiteConverter()
+converter.export_model(model, save_path='models/cardiobound.tflite', quantize=True)
+
+# Deploy to Jetson Nano
+converter.deploy_to_edge(model_path='models/cardiobound.tflite', device='jetson_nano')
+```
+
+### 5. Run Complete Pipeline
+
+```bash
+# Preprocess data
+python data_preprocessing.py
+
+# Train models
+python signal_processing.py
+python risk_stratification.py
+
+# Generate visualizations
+python visualizations.py
+```
