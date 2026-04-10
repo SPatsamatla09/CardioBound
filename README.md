@@ -8,7 +8,7 @@ CardioBound addresses the accessibility gap in cardiac monitoring by combining:
 - **Real-time ECG signal analysis** for arrhythmia classification across 5 cardiac conditions
 - **Multi-sensor fusion** integrating ECG, PPG, IMU, and temperature data
 - **Risk stratification model** for personalized cardiac health assessment
-
+- 
 The system achieves **97.3% diagnostic accuracy** with **end-to-end latency under 1 second**, enabling continuous 24/7 monitoring at **$250 vs $10,000+** traditional Holter monitors.
 
 ## Key Features
