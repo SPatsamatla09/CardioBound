@@ -14,10 +14,10 @@ The system achieves 97.3% diagnostic accuracy with end-to-end latency under 1 se
 
 ## Key Features
 
-- Hybrid CNN-LSTM Architecture: Spatiotemporal pattern recognition in ECG signals (97.3% accuracy)
-- XGBoost Risk Stratification: Cardiovascular risk forecasting (Low/Medium/High risk levels)
-- Multi-Class Classification: Normal, Supraventricular, Ventricular, Fusion, Unknown beats
-- Low-Power Deployment: TensorFlow Lite optimization for edge devices (Jetson Nano)
+- **Hybrid CNN-LSTM Architecture**: Spatiotemporal pattern recognition in ECG signals (97.3% accuracy)
+- **XGBoost Risk Stratification**: Cardiovascular risk forecasting (Low/Medium/High risk levels)
+- **Multi-Class Classification**: Normal, Supraventricular, Ventricular, Fusion, Unknown beats
+- **Low-Power Deployment**: TensorFlow Lite optimization for edge devices (Jetson Nano)
 
 ## Architecture
 
@@ -65,22 +65,36 @@ The system achieves 97.3% diagnostic accuracy with end-to-end latency under 1 se
 
 ### Preprocessing
 - Bandpass filtering (0.5–40 Hz)
-- Baseline drift removal
+- Notch filtering (60 Hz powerline interference)
 - Signal normalization
 
 ### Feature Extraction
 - Time-domain: RR intervals, HRV metrics (RMSSD, SDNN)
-- Morphological: R-peak detection, waveform characteristics
-- Statistical: Mean heart rate, variability measures
+- Morphological: R-peak detection, QRS complex features
+- Statistical: Mean heart rate, heart rate variability
 
 ### Classification
-- Conv1D Layers: Spatial feature extraction (64→128 filters)
-- Bidirectional LSTM: Temporal dependency modeling (128→64 units)
-- Dense Layers: 5-class softmax output
+- CNN: Spatial feature extraction from ECG segments
+- Bidirectional LSTM: Temporal dependency modeling
+- Softmax: 5-class output (Normal, Supraventricular, Ventricular, Fusion, Unknown)
+
+## Project Structure
+
+cardiobound/
+├── config.py                    # Central configuration
+├── data_preprocessing.py        # ECG signal and sensor preprocessing
+├── signal_processing.py         # CNN-LSTM + XGBoost implementations
+├── feature_extraction.py        # R-peak detection and HRV computation
+├── risk_stratification.py       # XGBoost risk model using HRV features
+├── visualizations.py            # Results plotting and analysis
+├── data/                        # Processed datasets
+├── models/                      # Trained model weights
+└── results/                     # Generated figures and metrics
 
 ## Installation
 
 ### Requirements
+
 pip install numpy scipy matplotlib scikit-learn tensorflow wfdb seaborn xgboost
 
 ### Python Version
@@ -91,57 +105,70 @@ pip install numpy scipy matplotlib scikit-learn tensorflow wfdb seaborn xgboost
 ## Usage
 
 ### 1. Data Preprocessing
-from data_loading import load_mitdb_records
-from signal_processing import bandpass_filter, segment_signal
 
-# Load MIT-BIH Arrhythmia Database
-signals, annotations = load_mitdb_records(data_path='data/mitdb', record_numbers=range(100, 110))
+from data_preprocessing import ECGPreprocessor, DatasetManager
 
-# Preprocess signals
-filtered = bandpass_filter(signals[0], lowcut=0.5, highcut=40)
-segments = segment_signal(filtered, window_size=360, overlap=180)
+# Initialize preprocessor
+preprocessor = ECGPreprocessor(sampling_rate=360)
 
-### 2. Feature Extraction
-from feature_extraction import detect_r_peaks, extract_hrv_features
+# Process signals
+processed_signal = preprocessor.preprocess_signal(raw_signal)
+features = preprocessor.extract_hrv_features(processed_signal)
 
-# Detect R-peaks
-r_peaks = detect_r_peaks(filtered_signal)
+# Create train-val-test splits
+dataset_mgr = DatasetManager(output_dir='processed_data')
+splits = dataset_mgr.create_splits(X, y, test_size=0.15, val_size=0.15)
 
-# Extract HRV features
-hrv_features = extract_hrv_features(r_peaks)
+### 2. Train CNN-LSTM Classifier
 
-### 3. Train CNN-LSTM Classifier
-from model_architecture import build_cnn_lstm_model
-from training import train_classification_model
+from signal_processing import CNNLSTM_Classifier
 
-# Build model
-model = build_cnn_lstm_model(input_shape=(360, 1), num_classes=5)
+# Initialize model
+model = CNNLSTM_Classifier(input_shape=(360, 1), n_classes=5)
+model.compile_model(learning_rate=1e-3)
 
 # Train
-model, history = train_classification_model(model, X_train, y_train, X_val, y_val, epochs=50, batch_size=32)
+history = model.train(X_train, y_train, X_val, y_val, epochs=50, batch_size=32)
 
 # Evaluate
-test_loss, test_acc = model.evaluate(X_test, y_test)
+accuracy, f1_score = model.evaluate(X_test, y_test)
 
-### 4. Train Risk Stratification Model
-from model_architecture import build_risk_stratification_model
+### 3. Train XGBoost Risk Stratification
 
-# Extract HRV features
-X_hrv = extract_hrv_from_signals(signals)
+from risk_stratification import RiskStratificationModel
 
-# Train XGBoost risk model
-risk_model = build_risk_stratification_model()
-risk_model.fit(X_train, y_risk)
+# Initialize XGBoost
+risk_model = RiskStratificationModel()
+risk_model.compile_model()
 
-# Predict risk level
-risk_level = risk_model.predict(X_test)
+# Train
+history = risk_model.train(X_hrv_train, y_risk_train, X_hrv_val, y_risk_val)
+
+# Predict
+risk_predictions = risk_model.predict(X_hrv_test)
+
+### 4. Hardware Deployment
+
+from hardware_export import TFLiteConverter
+
+# Convert to TensorFlow Lite
+converter = TFLiteConverter()
+converter.export_model(model, save_path='models/cardiobound.tflite', quantize=True)
+
+# Deploy to Jetson Nano
+converter.deploy_to_edge(model_path='models/cardiobound.tflite', device='jetson_nano')
 
 ### 5. Run Complete Pipeline
-# Train all models and generate visualizations
-python cardiobound_complete.py
 
-# Models saved to: models/
-# Results saved to: results/
+# Preprocess data
+python data_preprocessing.py
+
+# Train models
+python signal_processing.py
+python risk_stratification.py
+
+# Generate visualizations
+python visualizations.py
 
 ## Model Performance
 
@@ -153,10 +180,10 @@ python cardiobound_complete.py
 
 ## Datasets
 
-- MIT-BIH Arrhythmia Database: 48 half-hour ECG recordings (360 Hz)
-- MIT-BIH Atrial Fibrillation Database: AF detection dataset
-- MIT-BIH Long-Term AF Database: Extended monitoring records
-- PhysioNet Databases: Multiple public ECG repositories
+- MIT-BIH Arrhythmia Database: Public ECG signal repository
+- MIT-BIH Atrial Fibrillation Database: AF detection benchmark
+- MIT-BIH Long-Term AF Database: Extended monitoring dataset
+- Synthetic Data: Generated for demonstration and testing
 
 ## Target Conditions
 
@@ -170,17 +197,20 @@ python cardiobound_complete.py
 
 ### Proof-of-Concept System
 - Microcontroller: NVIDIA Jetson Nano
-- ECG Sensor: MAX86176 integrated biosensor
-- PPG Sensor: Integrated in MAX86176
-- IMU: MPU6050
+- ECG Sensor: MAX86176 integrated biosensor (Analog Devices)
+- PPG Sensor: Integrated pulse oximetry
+- IMU: MPU6050 for motion artifact detection
 - Sampling Rate: 360 Hz (ECG), 100 Hz (PPG)
 - Power: 40 mAh battery, 3.7V
-- Connectivity: Bluetooth Low Energy (ATM2202)
+- Connectivity: Bluetooth Low Energy (ATM2202 Atmosic)
 
 ### System Flow
+
 ECG/PPG/IMU Sensors → MAX86176 → ADC → Jetson Nano → ML Inference → Mobile App
                                         ↑                                   │
                                         └──────── Closed-Loop Feedback ─────┘
+
+Note: This project represents a software-based computational framework. Clinical deployment requires regulatory approval and extensive validation.
 
 
 ## Usage
