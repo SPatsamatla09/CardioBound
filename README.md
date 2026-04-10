@@ -19,6 +19,7 @@ The system achieves **97.3% diagnostic accuracy** with **end-to-end latency unde
 - **Low-Power Deployment**: TensorFlow Lite optimization for edge devices (Jetson Nano)
 
 ## Architecture
+```
 ┌──────────────────────────────────────────────────────────────────┐
 │            Multimodal Data Acquisition                           │
 │            ECG + PPG + IMU + Temperature Sensors                 │
@@ -59,6 +60,7 @@ The system achieves **97.3% diagnostic accuracy** with **end-to-end latency unde
 │
 ▼
 Adaptive Closed-Loop Patient Monitoring
+```
 
 ## Signal Processing Pipeline
 
