@@ -80,6 +80,7 @@ Adaptive Closed-Loop Patient Monitoring
    - Softmax: 5-class output (Normal, Supraventricular, Ventricular, Fusion, Unknown)
 
 ## Project Structure
+```
 cardiobound/
 ├── config.py                    # Central configuration
 ├── data_preprocessing.py        # ECG signal and sensor preprocessing
@@ -90,6 +91,7 @@ cardiobound/
 ├── data/                        # Processed datasets
 ├── models/                      # Trained model weights
 └── results/                     # Generated figures and metrics
+```
 
 ## Installation
 
