@@ -1,7 +1,8 @@
 {
   "expo": {
-    "name": "CBound",
-    "slug": "CBound",
+    "name": "CardioBound",
+    "slug": "cardiobound",
+    "scheme": "cardiobound",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
